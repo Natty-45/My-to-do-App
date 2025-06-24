@@ -3,17 +3,13 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 const statusEnum = ['pending', 'completed'] as const;
 
-export interface ITodo extends Document {
-  title: string;
-  description: string;
-  status: (typeof statusEnum)[number];
-  createdAt: Date;
-}
 
-const toDoSchema = new Schema<ITodo>({
+
+const toDoSchema = new Schema({
   title: {
     type: String,
     required: true,
+    unique: true
   },
   description: {
     type: String,
@@ -30,4 +26,4 @@ const toDoSchema = new Schema<ITodo>({
   },
 });
 
-export default mongoose.model<ITodo>('Todo', toDoSchema);
+export default mongoose.model('Todo', toDoSchema);
