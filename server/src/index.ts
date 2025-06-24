@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.route'
 const PORT = process.env.PORT || 5000;
 
 const app = express();
+app.use(express.json())
 
 app.use('/api', todoRoutes);
 app.use('/api/auth', authRoutes);

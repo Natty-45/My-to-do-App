@@ -8,7 +8,7 @@ export const signIn = async (
   res: Response
 ): Promise<Application | any > => {
   try {
-    const password  = req.body;
+    const {password}  = req.body;
 
     if (!password) {
       return res.status(400).json({ message: 'Password is required' });``
