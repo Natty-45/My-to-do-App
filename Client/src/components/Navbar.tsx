@@ -17,10 +17,10 @@ const Navbar = ()=> {
       {/* Right: Logout and Theme Changer */}
       <div className="flex items-center space-x-4">
         <button className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-md text-white font-medium transition-colors duration-300">
-          Logout
+          Theme
         </button>
         <button className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-md text-white font-medium transition-colors duration-300">
-          Theme
+          Logout
         </button>
       </div>
     </nav>

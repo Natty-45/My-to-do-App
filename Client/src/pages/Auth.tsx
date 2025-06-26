@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const Auth = () => {
   const [showForm, setShowForm] = useState<boolean>(false);
   const [password, setPassword] = useState<string>("");
 
   const clientName: string = import.meta.env.VITE_CLIENT_NAME || " ";
+  const navigate = useNavigate();
 
   useEffect(() => {
     const timer = setTimeout(() => setShowForm(true), 2500);
@@ -16,6 +18,7 @@ const Auth = () => {
   const handleSubmit = () => {
     if (password === "secret123") {
       toast.success("Login successful! ");
+      navigate("/"); // Redirect to the dashboard or home page
       // Here you could navigate or trigger auth logic
     }
     else if (password !== "") {
