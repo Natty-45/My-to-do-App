@@ -1,149 +1,145 @@
-import { Application,Response ,Request } from "express";
-import Todo from '../models/to-do.model'
-import { todo } from "node:test";
+import { Response, Request } from 'express';
+import Todo from '../models/to-do.model';
+import { AuthRequest } from '../middleware/auth.middleware';
 
-export const createTodo = async(
-    req:Request,
-     res:Response
-    ) : Promise<Application | any> =>{
+export const createTodo = async (req: AuthRequest, res: Response): Promise<any> => {
+  try {
+    const { title, description, status, priority, dueDate, category } = req.body;
 
-        try {
-           const { title, description, status } = req.body;
-
-    if (!title || !description || !status) {
-      return res.status(400).json({ message: 'The title, description, and status are required' });
-    }
-
-    const todo = await Todo.findOne({ title });
-
-    if (todo) {
-      return res.status(400).json({ message: 'The todo already exists' });
+    if (!title || !description) {
+      return res.status(400).json({ message: 'Title and description are required.' });
     }
 
     const newTodo = await Todo.create({
       title,
       description,
-      status,
+      status: status || 'pending',
+      priority: priority || 'medium',
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+      category: category || undefined,
     });
 
-    console.log(newTodo);
-    return res.status(200).json({ message: 'Todo created successfully', data: newTodo });
-  } catch (error) {
+    return res.status(201).json({ message: 'Todo created successfully', data: newTodo });
+  } catch (error: any) {
     console.error('Error creating todo:', error);
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'A todo with this title already exists.' });
+    }
     return res.status(500).json({ message: 'Internal server error' });
   }
-
 };
 
-export const getAllTodos = async(
-    req:Request,
-    res:Response): Promise<Application | any> =>{
-        try {
-            const todos = await Todo.find();
-            if(!todos){
-                return res.status(400).json({message:'No To-do found. please create one!'});
-            }
-            return res.status(200).json({
-                        message: "Successfully fetched all to-dos",
-                        data: todos.map(todo => ({ title: todo.title, createdAt: todo.createdAt }))
+export const getAllTodos = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { status, priority, category, search, sortBy, order } = req.query;
+
+    // Build filter object
+    const filter: Record<string, any> = {};
+    if (status && status !== 'all') filter.status = status;
+    if (priority && priority !== 'all') filter.priority = priority;
+    if (category) filter.category = { $regex: category, $options: 'i' };
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Build sort object
+    const sortField = (sortBy as string) || 'createdAt';
+    const sortOrder = order === 'asc' ? 1 : -1;
+    const sortOptions: Record<string, any> = { [sortField]: sortOrder };
+
+    const todos = await Todo.find(filter).sort(sortOptions);
+
+    return res.status(200).json({
+      message: 'Todos fetched successfully',
+      count: todos.length,
+      data: todos,
     });
-        } catch (error) {
-            return res.status(500).json({message:"Internal Server Error!"})
-        }
+  } catch (error) {
+    console.error('Error fetching todos:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
-export const getTodo = async(
-    req:Request,
-    res:Response
-): Promise< Application | any> =>{
-    try
-    {
-        const id = req.params.id;
-        if(!id){
-            return res.status(400).json({message:"Please add to-do ID to get the details"})
-        }
+export const getTodo = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const todo = await Todo.findById(id);
 
-        const todo = await Todo.findById(id);
-
-        if(!todo){
-            return res.status(400).json({message:'To-do not Found!'})
-        }
-
-        return res.status(200).json({message:"To-do Fetch Successfully", data:todo})
+    if (!todo) {
+      return res.status(404).json({ message: 'Todo not found.' });
     }
-    catch(error)
-    {
-        return res.status(500).json({message:'Internal server error'});
-    }
+
+    return res.status(200).json({ message: 'Todo fetched successfully', data: todo });
+  } catch (error) {
+    console.error('Error fetching todo:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
-export const updateTodo = async(
-    req:Request,
-    res:Response
-): Promise<Application | any> =>{
-
-    try {
-           const id = req.params.id;
-    if (!id) {
-      return res.status(400).json({ message: 'To-do ID is required' });
-    }
+export const updateTodo = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const { title, description, status, priority, dueDate, category } = req.body;
 
     const todo = await Todo.findById(id);
     if (!todo) {
-      return res.status(404).json({ message: 'To-do not found' });
+      return res.status(404).json({ message: 'Todo not found.' });
     }
 
-    const { title, description, status } = req.body;
-    if (!title && !description && !status) {
-      return res.status(400).json({ message: 'At least one field (title, description, or status) must be provided' });
+    const updateData: Record<string, any> = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (status !== undefined) updateData.status = status;
+    if (priority !== undefined) updateData.priority = priority;
+    if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+    if (category !== undefined) updateData.category = category;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'At least one field must be provided to update.' });
     }
 
-    const updateData: { title?: string; description?: string; status?: string } = {};
-    if (title) updateData.title = title;
-    if (description) updateData.description = description;
-    if (status) updateData.status = status;
-
-    const updatedTodo = await Todo.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedTodo) {
-      return res.status(500).json({ message: 'Failed to update to-do' });
-    }
-
-    return res.status(200).json({
-      message: 'To-do updated successfully',
-      data: updatedTodo
+    const updatedTodo = await Todo.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
     });
-        
 
-    } catch (error) {
-        return res.status(500).json({message:'Intrenal server error'})
-    }
+    return res.status(200).json({ message: 'Todo updated successfully', data: updatedTodo });
+  } catch (error) {
+    console.error('Error updating todo:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
-export const deleteTodo = async (
-  req: Request,
-  res: Response
-): Promise<Application | any> => {
+export const deleteTodo = async (req: Request, res: Response): Promise<any> => {
   try {
-    const id = req.params.id;
-
-    if (!id) {
-      return res.status(400).json({ message: 'Id is required!' });
-    }
-
+    const { id } = req.params;
     const todo = await Todo.findByIdAndDelete(id);
 
     if (!todo) {
-      return res.status(404).json({ message: 'To-do not found' });
+      return res.status(404).json({ message: 'Todo not found.' });
     }
 
-    return res.status(200).json({ message: 'To-do deleted successfully' });
+    return res.status(200).json({ message: 'Todo deleted successfully' });
   } catch (error) {
-    console.error('Error deleting to-do:', error);
+    console.error('Error deleting todo:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const bulkDelete = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'An array of IDs is required.' });
+    }
+
+    const result = await Todo.deleteMany({ _id: { $in: ids } });
+    return res.status(200).json({ message: `${result.deletedCount} todos deleted.` });
+  } catch (error) {
+    console.error('Error bulk deleting todos:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

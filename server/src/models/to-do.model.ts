@@ -1,29 +1,56 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export type TodoStatus = 'pending' | 'in-progress' | 'completed';
+export type TodoPriority = 'low' | 'medium' | 'high' | 'urgent';
 
-const statusEnum = ['pending', 'completed'] as const;
+export interface ITodo extends Document {
+  title: string;
+  description: string;
+  status: TodoStatus;
+  priority: TodoPriority;
+  dueDate?: Date;
+  category?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-
-
-const toDoSchema = new Schema({
-  title: {
-    type: String,
-    required: true,
-    unique: true
+const toDoSchema = new Schema<ITodo>(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'in-progress', 'completed'],
+      default: 'pending',
+      required: true,
+    },
+    priority: {
+      type: String,
+      enum: ['low', 'medium', 'high', 'urgent'],
+      default: 'medium',
+      required: true,
+    },
+    dueDate: {
+      type: Date,
+      required: false,
+    },
+    category: {
+      type: String,
+      trim: true,
+      required: false,
+    },
   },
-  description: {
-    type: String,
-    required: true,
-  },
-  status: {
-    type: String,
-    enum: statusEnum,
-    required: true,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  {
+    timestamps: true,
+  }
+);
 
-export default mongoose.model('Todo', toDoSchema);
+export default mongoose.model<ITodo>('Todo', toDoSchema);
