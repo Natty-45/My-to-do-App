@@ -3,6 +3,16 @@ import mongoose, { Schema, Document } from 'mongoose';
 export type TodoStatus = 'pending' | 'in-progress' | 'completed';
 export type TodoPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+export interface ISubtask {
+  text: string;
+  completed: boolean;
+}
+
+export interface IRecurring {
+  interval: 'daily' | 'weekly' | 'monthly' | 'none';
+  nextDate?: Date;
+}
+
 export interface ITodo extends Document {
   title: string;
   description: string;
@@ -10,9 +20,22 @@ export interface ITodo extends Document {
   priority: TodoPriority;
   dueDate?: Date;
   category?: string;
+  tags: string[];
+  subtasks: ISubtask[];
+  recurring: IRecurring;
+  collectionId?: mongoose.Types.ObjectId;
+  order: number;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const subtaskSchema = new Schema<ISubtask>(
+  {
+    text: { type: String, required: true, trim: true },
+    completed: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
 
 const toDoSchema = new Schema<ITodo>(
   {
@@ -47,10 +70,38 @@ const toDoSchema = new Schema<ITodo>(
       trim: true,
       required: false,
     },
+    tags: {
+      type: [String],
+      default: [],
+    },
+    subtasks: {
+      type: [subtaskSchema],
+      default: [],
+    },
+    recurring: {
+      type: {
+        interval: { type: String, enum: ['daily', 'weekly', 'monthly', 'none'], default: 'none' },
+        nextDate: { type: Date },
+      },
+      default: { interval: 'none' },
+    },
+    collectionId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Collection',
+      required: false,
+      default: null,
+    },
+    order: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// Index for efficient queries
+toDoSchema.index({ collectionId: 1, order: 1 });
 
 export default mongoose.model<ITodo>('Todo', toDoSchema);

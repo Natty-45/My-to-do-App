@@ -25,6 +25,7 @@ const defaultFilters: FilterState = {
   search: '',
   sortBy: 'createdAt',
   order: 'desc',
+  collectionId: 'all',
 };
 
 export const useTodoStore = create<TodoStore>((set, get) => ({

@@ -19,6 +19,7 @@ export const getAllTodos = async (filters?: Partial<FilterState>): Promise<Todo[
   if (filters?.search) params.search = filters.search;
   if (filters?.sortBy) params.sortBy = filters.sortBy;
   if (filters?.order) params.order = filters.order;
+  if (filters?.collectionId && filters.collectionId !== 'all') params.collectionId = filters.collectionId;
 
   const response = await api.get<TodosResponse>('/to-do', { params });
   return response.data.data;
@@ -45,4 +46,8 @@ export const deleteTodo = async (id: string): Promise<void> => {
 
 export const bulkDelete = async (ids: string[]): Promise<void> => {
   await api.delete('/to-do/bulk/delete', { data: { ids } });
+};
+
+export const reorderTodos = async (items: { _id: string; order: number }[]): Promise<void> => {
+  await api.put('/to-do/reorder', { items });
 };

@@ -6,6 +6,7 @@ import {
   getTodo,
   updateTodo,
   bulkDelete,
+  reorderTodos,
 } from '../controllers/todo.controller';
 import { protect } from '../middleware/auth.middleware';
 
@@ -14,7 +15,7 @@ const router = express.Router();
 // All todo routes are protected
 router.use(protect);
 
-// GET all todos (supports ?status=&priority=&search=&sortBy=&order=)
+// GET all todos (supports ?status=&priority=&search=&sortBy=&order=&collectionId=&tag=)
 router.get('/', getAllTodos);
 
 // GET single todo
@@ -31,5 +32,8 @@ router.delete('/delete/:id', deleteTodo);
 
 // BULK DELETE todos
 router.delete('/bulk/delete', bulkDelete);
+
+// REORDER todos
+router.put('/reorder', reorderTodos);
 
 export default router;

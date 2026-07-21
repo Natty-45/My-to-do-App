@@ -9,7 +9,10 @@ import {
   Clock,
   Zap,
   AlertCircle,
+  ListChecks,
+  Repeat,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Todo, TodoPriority, TodoStatus } from "../types";
 import { useTodoStore } from "../store/todoStore";
 import toast from "react-hot-toast";
@@ -98,22 +101,26 @@ const formatDate = (dateStr: string): string => {
 };
 
 const TodoCard = ({ todo, onEdit, index }: TodoCardProps) => {
+  const { t } = useTranslation();
   const { deleteTodo, updateTodo } = useTodoStore();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [showSubtasks, setShowSubtasks] = useState(false);
 
   const priority = priorityConfig[todo.priority];
   const status = statusConfig[todo.status];
   const overdue = isOverdue(todo.dueDate, todo.status);
+  const completedSubtasks = todo.subtasks?.filter((s) => s.completed).length || 0;
+  const totalSubtasks = todo.subtasks?.length || 0;
 
   const handleDelete = async () => {
     if (isDeleting) return;
     setIsDeleting(true);
     try {
       await deleteTodo(todo._id);
-      toast.success("Todo deleted.");
+      toast.success(t("todo.deleted"));
     } catch {
-      toast.error("Failed to delete todo.");
+      toast.error(t("todo.deleteFailed"));
       setIsDeleting(false);
     }
   };
@@ -125,11 +132,11 @@ const TodoCard = ({ todo, onEdit, index }: TodoCardProps) => {
       await updateTodo(todo._id, { status: status.next });
       toast.success(
         status.next === "completed"
-          ? "🎉 Task completed!"
-          : `Moved to ${statusConfig[status.next].label}`
+          ? t("todo.taskCompleted")
+          : t("todo.movedTo", { status: statusConfig[status.next].label })
       );
     } catch {
-      toast.error("Failed to update status.");
+      toast.error(t("todo.updateFailed"));
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -165,7 +172,7 @@ const TodoCard = ({ todo, onEdit, index }: TodoCardProps) => {
         borderColor: overdue ? "rgba(239,68,68,0.5)" : "rgba(124,58,237,0.3)",
       }}
     >
-      {/* Priority accent bar on left */}
+      {/* Priority accent bar */}
       <div
         style={{
           position: "absolute",
@@ -179,30 +186,13 @@ const TodoCard = ({ todo, onEdit, index }: TodoCardProps) => {
         }}
       />
 
-      {/* Completed overlay strikethrough effect */}
       {todo.status === "completed" && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(16, 185, 129, 0.03)",
-            borderRadius: 16,
-            pointerEvents: "none",
-          }}
-        />
+        <div style={{ position: "absolute", inset: 0, background: "rgba(16, 185, 129, 0.03)", borderRadius: 16, pointerEvents: "none" }} />
       )}
 
       <div style={{ paddingLeft: 8 }}>
-        {/* Top row: title + actions */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: 12,
-            marginBottom: 8,
-          }}
-        >
+        {/* Top row */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
           <h3
             style={{
               fontSize: "0.98rem",
@@ -218,50 +208,26 @@ const TodoCard = ({ todo, onEdit, index }: TodoCardProps) => {
             {todo.title}
           </h3>
 
-          {/* Action buttons — always visible */}
           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => onEdit(todo)}
               title="Edit"
-              style={{
-                background: "rgba(167,139,250,0.1)",
-                border: "1px solid rgba(167,139,250,0.2)",
-                borderRadius: 8,
-                padding: "6px 7px",
-                cursor: "pointer",
-                color: "#a78bfa",
-                display: "flex",
-                alignItems: "center",
-              }}
+              style={{ background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8, padding: "6px 7px", cursor: "pointer", color: "#a78bfa", display: "flex", alignItems: "center" }}
             >
               <Edit3 size={14} />
             </motion.button>
-
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleDelete}
               disabled={isDeleting}
               title="Delete"
-              style={{
-                background: "rgba(239,68,68,0.08)",
-                border: "1px solid rgba(239,68,68,0.2)",
-                borderRadius: 8,
-                padding: "6px 7px",
-                cursor: "pointer",
-                color: "#ef4444",
-                display: "flex",
-                alignItems: "center",
-              }}
+              style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "6px 7px", cursor: "pointer", color: "#ef4444", display: "flex", alignItems: "center" }}
             >
               {isDeleting ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }}
-                  style={{ width: 14, height: 14, border: "2px solid #ef4444", borderTopColor: "transparent", borderRadius: "50%" }}
-                />
+                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }} style={{ width: 14, height: 14, border: "2px solid #ef4444", borderTopColor: "transparent", borderRadius: "50%" }} />
               ) : (
                 <Trash2 size={14} />
               )}
@@ -271,60 +237,88 @@ const TodoCard = ({ todo, onEdit, index }: TodoCardProps) => {
 
         {/* Description */}
         {todo.description && (
-          <p
-            style={{
-              fontSize: "0.84rem",
-              color: "var(--color-text-muted)",
-              lineHeight: 1.5,
-              marginBottom: 12,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
+          <p style={{ fontSize: "0.84rem", color: "var(--color-text-muted)", lineHeight: 1.5, marginBottom: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {todo.description}
           </p>
         )}
 
+        {/* Tags */}
+        {todo.tags && todo.tags.length > 0 && (
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
+            {todo.tags.map((tag) => (
+              <span key={tag} style={{ fontSize: "0.65rem", fontWeight: 500, padding: "2px 8px", borderRadius: 999, background: "rgba(124,58,237,0.08)", color: "var(--color-text-muted)", border: "1px solid rgba(124,58,237,0.15)" }}>
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Subtasks summary */}
+        {totalSubtasks > 0 && (
+          <button
+            onClick={() => setShowSubtasks(!showSubtasks)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 8,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              fontFamily: "var(--font-family)",
+              fontSize: "0.78rem",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            <ListChecks size={13} />
+            <span>{completedSubtasks}/{totalSubtasks} subtasks</span>
+            <ChevronRight
+              size={12}
+              style={{
+                transform: `rotate(${showSubtasks ? 90 : 0}deg)`,
+                transition: "transform 0.2s ease",
+              }}
+            />
+          </button>
+        )}
+
+        {/* Expanded subtasks */}
+        <AnimatePresence>
+          {showSubtasks && totalSubtasks > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              style={{ overflow: "hidden", marginBottom: 8 }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {todo.subtasks.map((st, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,0.03)" }}>
+                    <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${st.completed ? "#10b981" : "rgba(255,255,255,0.2)"}`, background: st.completed ? "#10b981" : "transparent", flexShrink: 0 }} />
+                    <span style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)", textDecoration: st.completed ? "line-through" : "none", opacity: st.completed ? 0.6 : 1 }}>
+                      {st.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Badges row */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            flexWrap: "wrap",
-          }}
-        >
-          {/* Status badge — clickable to cycle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          {/* Status badge */}
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             onClick={handleStatusCycle}
             disabled={isUpdatingStatus}
             title={`Advance to ${statusConfig[status.next].label}`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "4px 10px",
-              borderRadius: 999,
-              fontSize: "0.72rem",
-              fontWeight: 600,
-              background: status.bg,
-              color: status.color,
-              border: `1px solid ${status.color}40`,
-              cursor: "pointer",
-              fontFamily: "var(--font-family)",
-              transition: "all 0.15s ease",
-            }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 999, fontSize: "0.72rem", fontWeight: 600, background: status.bg, color: status.color, border: `1px solid ${status.color}40`, cursor: "pointer", fontFamily: "var(--font-family)", transition: "all 0.15s ease" }}
           >
             {isUpdatingStatus ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }}
-                style={{ width: 10, height: 10, border: `2px solid ${status.color}`, borderTopColor: "transparent", borderRadius: "50%" }}
-              />
+              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }} style={{ width: 10, height: 10, border: `2px solid ${status.color}`, borderTopColor: "transparent", borderRadius: "50%" }} />
             ) : (
               status.icon
             )}
@@ -333,49 +327,26 @@ const TodoCard = ({ todo, onEdit, index }: TodoCardProps) => {
           </motion.button>
 
           {/* Priority badge */}
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 3,
-              padding: "4px 10px",
-              borderRadius: 999,
-              fontSize: "0.72rem",
-              fontWeight: 600,
-              background: priority.bg,
-              color: priority.color,
-              border: `1px solid ${priority.border}`,
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
-          >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "4px 10px", borderRadius: 999, fontSize: "0.72rem", fontWeight: 600, background: priority.bg, color: priority.color, border: `1px solid ${priority.border}`, textTransform: "uppercase", letterSpacing: "0.04em" }}>
             {todo.priority === "urgent" && (
-              <motion.span
-                animate={{ opacity: [1, 0.4, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
-              >
+              <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1, repeat: Infinity }}>
                 <AlertCircle size={10} />
               </motion.span>
             )}
             {priority.label}
           </span>
 
+          {/* Recurring */}
+          {todo.recurring?.interval && todo.recurring.interval !== "none" && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 999, fontSize: "0.72rem", fontWeight: 500, background: "rgba(245,200,66,0.08)", color: "#f5c842", border: "1px solid rgba(245,200,66,0.2)" }}>
+              <Repeat size={10} />
+              {todo.recurring.interval}
+            </span>
+          )}
+
           {/* Category */}
           {todo.category && (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "4px 10px",
-                borderRadius: 999,
-                fontSize: "0.72rem",
-                fontWeight: 500,
-                background: "rgba(124,58,237,0.08)",
-                color: "var(--color-text-secondary)",
-                border: "1px solid rgba(124,58,237,0.15)",
-              }}
-            >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 999, fontSize: "0.72rem", fontWeight: 500, background: "rgba(124,58,237,0.08)", color: "var(--color-text-secondary)", border: "1px solid rgba(124,58,237,0.15)" }}>
               <Tag size={10} />
               {todo.category}
             </span>
@@ -383,20 +354,7 @@ const TodoCard = ({ todo, onEdit, index }: TodoCardProps) => {
 
           {/* Due date */}
           {todo.dueDate && (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "4px 10px",
-                borderRadius: 999,
-                fontSize: "0.72rem",
-                fontWeight: 500,
-                background: overdue ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)",
-                color: overdue ? "#ef4444" : "var(--color-text-muted)",
-                border: `1px solid ${overdue ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.08)"}`,
-              }}
-            >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 999, fontSize: "0.72rem", fontWeight: 500, background: overdue ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)", color: overdue ? "#ef4444" : "var(--color-text-muted)", border: `1px solid ${overdue ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.08)"}` }}>
               <Calendar size={10} />
               {formatDate(todo.dueDate)}
             </span>

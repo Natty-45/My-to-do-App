@@ -22,11 +22,11 @@ export const signIn = async (req: Request, res: Response): Promise<any> => {
     }
 
     const secret = process.env.JWT_SECRET || 'fallback_secret_change_in_prod';
-    const token = jwt.sign({ userId: user._id.toString() }, secret, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: (user._id as string).toString() }, secret, { expiresIn: '7d' });
 
     return res.status(200).json({
       authenticated: true,
-      userId: user._id,
+      userId: user._id as string,
       token,
     });
   } catch (error) {
